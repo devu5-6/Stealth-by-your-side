@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="./index.css" />
+</head>
+
+<body
+  class="w-screen h-screen bg-[#121218]/90 backdrop-blur-md rounded-xl border border-gray-400/20 flex flex-col overflow-hidden text-[#c0c0c0] select-none">
+
+  <!-- Draggable Top Control Strip -->
+  <header class="drag-region flex items-center justify-between px-3 py-2 bg-black/40 border-b border-gray-400/15">
+    <div class="flex items-center gap-2">
+      <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] transition-all"></span>
+      <span class="text-xs font-semibold tracking-wide text-gray-200">Stealth AI</span>
+    </div>
+
+    <!-- Non-draggable Controls -->
+    <div class="no-drag-region flex items-center gap-2">
+      <!-- Screen Analysis Button -->
+      <button id="snapBtn"
+        class="text-[11px] px-2 py-0.5 rounded bg-indigo-600/80 hover:bg-indigo-600 text-white font-medium transition"
+        title="Analyze Question on Screen (Ctrl+Shift+S)">
+        📷 Snap
+      </button>
+      <!-- Resume Toggle Button -->
+      <button id="resumeToggleBtn"
+        class="text-[11px] px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-600 transition"
+        title="Paste Resume Context">
+        📄 Resume
+      </button>
+
+      <!-- Mic Listen Toggle -->
+      <button id="micBtn"
+        class="text-[11px] px-2 py-0.5 rounded bg-blue-600/80 hover:bg-blue-600 text-white font-medium transition"
+        title="Start/Stop Listening">
+        🎙️ Start
+      </button>
+
+      <!-- Opacity Slider -->
+      <input type="range" id="opacitySlider" min="0.2" max="1" step="0.05" value="1" title="Adjust Transparency"
+        class="w-14 h-1 accent-slate-400 cursor-pointer" />
+
+      <!-- Window Actions -->
+      <div class="flex items-center gap-1">
+        <button id="minBtn"
+          class="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-gray-700/50 text-xs transition"
+          title="Minimize">−</button>
+        <button id="closeBtn"
+          class="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-red-600 text-xs transition"
+          title="Quit">✕</button>
+      </div>
+    </div>
+  </header>
+  <!-- Collapsible Resume Context Drawer -->
+  <div id="resumeDrawer" class="hidden p-3 bg-black/70 border-b border-gray-400/20 text-xs space-y-2">
+    <div class="flex items-center justify-between">
+      <span class="text-gray-300 font-semibold text-[11px]">CANDIDATE RESUME / CONTEXT</span>
+      <button id="saveResumeBtn"
+        class="text-[10px] px-2 py-0.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white">Save</button>
+    </div>
+    <textarea id="resumeInput" rows="4"
+      placeholder="Paste your resume, skills, or projects here. The LLM will ground answers in this context..."
+      class="w-full bg-[#1e1e24] text-gray-200 border border-gray-600 rounded p-2 text-xs focus:outline-none focus:border-blue-500 resize-none font-mono"></textarea>
+  </div>
+
+  <!-- Live Transcript Banner -->
+  <div class="px-3 py-1.5 bg-white/5 border-b border-white/5 flex items-center gap-2">
+    <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Hearing:</span>
+    <span id="liveTranscript" class="text-xs text-gray-300 italic truncate">Ready to listen...</span>
+  </div>
+
+  <!-- Real-Time AI Stream Cards -->
+  <main id="responseFeed" class="flex-1 p-3 overflow-y-auto space-y-3 text-xs leading-relaxed">
+    <div class="p-3 bg-white/5 rounded-lg border border-white/5 text-gray-400">
+      Click <strong class="text-gray-200">🎙️ Start</strong>. When the interviewer speaks, the transcription will detect
+      the question and stream real-time bullet points here.
+    </div>
+  </main>
+
+  <script type="module" src="/src/renderer.js"></script>
+</body>
+
+</html>
