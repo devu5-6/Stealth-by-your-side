@@ -1,7 +1,7 @@
 {
-  "name": "stealth-whisperer",
-  "productName": "stealth-whisperer",
-  "version": "1.0.0",
+  "name": "norton-security",
+  "productName": "Norton Security",
+  "version": "1.0.3",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "private": true,
