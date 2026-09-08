@@ -10,6 +10,7 @@ marked.setOptions({
 // DOM Elements
 const snapBtn = document.getElementById('snapBtn');
 const micBtn = document.getElementById('micBtn');
+const audioSourceBtn = document.getElementById('audioSourceBtn');
 const liveTranscript = document.getElementById('liveTranscript');
 const responseFeed = document.getElementById('responseFeed');
 const resumeToggleBtn = document.getElementById('resumeToggleBtn');
@@ -25,6 +26,7 @@ let isListening = false;
 let socket = null;
 let mediaRecorder = null;
 let audioStream = null;
+let audioMode = 'me'; // Default to 'me' (Microphone) for immediate reliable audio
 let candidateResume = localStorage.getItem('candidate_resume') || '';
 
 // Question accumulation & debounce timer
@@ -34,6 +36,24 @@ let silenceDebounceTimer = null;
 if (candidateResume) {
   resumeInput.value = candidateResume;
 }
+
+// Audio Source Toggle ('me' vs 'recruiter')
+audioSourceBtn?.addEventListener('click', () => {
+  if (audioMode === 'me') {
+    audioMode = 'recruiter';
+    audioSourceBtn.textContent = '🔊 Recruiter';
+    audioSourceBtn.className = 'text-[11px] px-2 py-0.5 rounded bg-amber-600/80 hover:bg-amber-600 text-white font-medium transition';
+  } else {
+    audioMode = 'me';
+    audioSourceBtn.textContent = '🎤 Me';
+    audioSourceBtn.className = 'text-[11px] px-2 py-0.5 rounded bg-emerald-600/80 hover:bg-emerald-600 text-white font-medium transition';
+  }
+
+  if (isListening) {
+    stopListening();
+    startListening();
+  }
+});
 
 // Drawer Toggle
 resumeToggleBtn?.addEventListener('click', () => {
