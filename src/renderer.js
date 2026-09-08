@@ -195,16 +195,32 @@ async function startListening() {
   }
 
   try {
-    audioStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        channelCount: 1,
-        sampleRate: 16000,
-      },
-    });
+    if (audioMode === 'me') {
+      audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 16000,
+        },
+      });
+    } else {
+      // Recruiter mode via DisplayMedia Loopback
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
 
-    // Deepgram live stream with punctuation and interim results
+      displayStream.getVideoTracks().forEach((t) => t.stop());
+      const audioTracks = displayStream.getAudioTracks();
+
+      if (audioTracks.length === 0) {
+        alert('Make sure to check "Share audio" in the popup window!');
+        stopListening();
+        return;
+      }
+      audioStream = new MediaStream(audioTracks);
+    }
+
     socket = new WebSocket(
       'wss://api.deepgram.com/v1/listen?model=nova-2&punctuate=true&interim_results=true&endpointing=500',
       ['token', deepgramKey]
@@ -222,25 +238,22 @@ async function startListening() {
       isListening = true;
       micBtn.textContent = '⏹️ Stop';
       micBtn.className = 'text-[11px] px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-medium transition';
-      liveTranscript.textContent = 'Listening... (speak your question)';
+      if (liveTranscript) liveTranscript.textContent = 'Listening...';
     };
 
     socket.onmessage = (message) => {
       const data = JSON.parse(message.data);
       const text = data.channel?.alternatives[0]?.transcript || '';
 
-      // 1. Show live interim words as they are being spoken
-      if (text.trim().length > 0) {
+      if (text.trim().length > 0 && liveTranscript) {
         liveTranscript.textContent = text;
       }
 
-      // 2. Accumulate finalized phrases
       if (data.is_final && text.trim().length > 0) {
         accumulatedQuestion += ' ' + text.trim();
         resetSilenceTimer();
       }
 
-      // 3. Trigger immediately if Deepgram signals end-of-speech
       if (data.speech_final) {
         processQuestionIfReady();
       }
@@ -255,13 +268,12 @@ async function startListening() {
       stopListening();
     };
   } catch (err) {
-    console.error('Mic Access Error:', err);
-    alert('Microphone access denied or unavailable.');
+    console.error('Audio capture error:', err);
+    alert('Audio capture failed. Check microphone permissions or audio device.');
     stopListening();
   }
 }
 
-// Fallback timer: triggers LLM 1.2s after you stop speaking
 function resetSilenceTimer() {
   clearTimeout(silenceDebounceTimer);
   silenceDebounceTimer = setTimeout(() => {
@@ -272,11 +284,10 @@ function resetSilenceTimer() {
 function processQuestionIfReady() {
   clearTimeout(silenceDebounceTimer);
   const finalQuestion = accumulatedQuestion.trim();
-  
-  // Only trigger if question is meaningful (more than 4 characters)
+
   if (finalQuestion.length >= 5) {
     accumulatedQuestion = '';
-    liveTranscript.textContent = 'Generating answer...';
+    if (liveTranscript) liveTranscript.textContent = 'Generating answer...';
     triggerGroqAnswer(finalQuestion);
   }
 }
@@ -296,7 +307,7 @@ function stopListening() {
   isListening = false;
   micBtn.textContent = '🎙️ Start';
   micBtn.className = 'text-[11px] px-2 py-0.5 rounded bg-blue-600/80 hover:bg-blue-600 text-white font-medium transition';
-  liveTranscript.textContent = 'Paused.';
+  if (liveTranscript) liveTranscript.textContent = 'Paused.';
 }
 
 // --- Groq LLM Streaming ---
@@ -373,7 +384,7 @@ Instructions:
       for (const line of lines) {
         const payload = line.replace(/^data: /, '').trim();
         if (payload === '[DONE]') {
-          liveTranscript.textContent = 'Listening...';
+          if (liveTranscript) liveTranscript.textContent = 'Listening...';
           return;
         }
 
