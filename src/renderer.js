@@ -1,7 +1,6 @@
 import './index.css';
 import { marked } from 'marked';
 
-// Configure marked options for code rendering and line breaks
 marked.setOptions({
   gfm: true,
   breaks: true,
@@ -84,7 +83,6 @@ async function handleScreenAnalysis() {
     return;
   }
 
-  // Create UI Card for Vision Output
   const card = document.createElement('div');
   card.className = 'p-3 bg-white/5 rounded-lg border border-indigo-700/50 space-y-2 animate-fade-in';
   card.innerHTML = `
@@ -431,8 +429,6 @@ QUESTION ROUTING:
           const parsed = JSON.parse(payload);
           const token = parsed.choices[0]?.delta?.content || '';
           accumulatedText += token;
-          
-          // Render via marked to handle bullets, bold text, inline code, and code blocks cleanly
           answerContainer.innerHTML = marked.parse(accumulatedText);
         } catch (_) {}
       }
