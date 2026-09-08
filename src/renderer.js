@@ -104,14 +104,17 @@ async function handleScreenAnalysis() {
 
     answerContainer.textContent = '⚡ Extracting and solving question...';
 
-    const systemPrompt = `You are an interview and technical assessment copilot.
-1. Identify the primary coding question, multiple-choice quiz, or technical problem displayed on the user's screen.
-2. Provide a direct, correct answer immediately:
-   - For Multiple Choice: State the exact correct option and a 1-line justification.
-   - For Coding Problems: Provide the optimal solution in clean code (fenced block) followed by 2-3 brief bullet points explaining Time/Space Complexity ($O(...)$).
-3. Do not include introductory pleasantries.`;
+    const systemPrompt = `You are a live assessment solver.
+CRITICAL FORMAT RULES:
+1. First identify what the question is asking: code, multiple-choice, debugging, explanation, output prediction, or another task.
+2. If it is a coding question, give **Code** first with a complete runnable solution.
+3. If it is a debugging question, give the fixed code or exact bug fix first.
+4. If it is multiple-choice, give the correct option/answer first.
+5. If it asks for explanation, output, complexity, or any other answer, give the direct answer first.
+6. After the answer/code/fix, give **Explanation** with exactly 4 short bullet points.
+7. Use simple, easy English. Keep it direct, practical, and beginner-friendly.
+8. No greetings, no long theory, no dry-run table, no extra sections.`;
 
-    // Send Image to Vision Model (qwen/qwen3.6-27b on Groq)
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -119,15 +122,16 @@ async function handleScreenAnalysis() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.6-27b', // Multimodal vision model from your active list
+        model: 'qwen/qwen3.6-27b',
         stream: true,
         temperature: 0.1,
+        max_completion_tokens: 1200,
         messages: [
           { role: 'system', content: systemPrompt },
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Analyze this screen capture, locate the question or problem statement, and provide the complete solution.' },
+              { type: 'text', text: 'Read the question in this screenshot. Answer exactly what it asks. If code or a fix is needed, give it first. Then add only 4 short and simple explanation bullet points.' },
               {
                 type: 'image_url',
                 image_url: {
@@ -142,7 +146,12 @@ async function handleScreenAnalysis() {
 
     if (!response.ok) {
       const errText = await response.text();
-      answerContainer.textContent = `Vision API Error: ${errText}`;
+      const retryAfter = response.headers.get('retry-after');
+      const waitText = retryAfter ? ` Wait ${retryAfter}s and try again.` : ' Wait a minute and try again.';
+      const isRateLimit = response.status === 429 || errText.toLowerCase().includes('rate limit');
+      answerContainer.textContent = isRateLimit
+        ? `Vision API rate limit hit.${waitText}`
+        : `Vision API Error: ${errText}`;
       return;
     }
 
