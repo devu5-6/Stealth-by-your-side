@@ -62,17 +62,22 @@ ipcMain.handle('capture-screen', async () => {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.size;
 
+    // Keep snap payloads small enough for fast vision requests.
+    const maxDimension = 960;
+    const scale = Math.min(1, maxDimension / width);
+    const targetWidth = Math.round(width * scale);
+    const targetHeight = Math.round(height * scale);
+
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
       thumbnailSize: {
-        width: width * primaryDisplay.scaleFactor,
-        height: height * primaryDisplay.scaleFactor,
+        width: targetWidth,
+        height: targetHeight,
       },
     });
 
     if (sources.length > 0) {
-      // Returns clean base64 image (overlay is excluded due to setContentProtection)
-      const image = sources[0].thumbnail.toJPEG(80);
+      const image = sources[0].thumbnail.toJPEG(50);
       return `data:image/jpeg;base64,${image.toString('base64')}`;
     }
     return null;
