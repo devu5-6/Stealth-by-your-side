@@ -1,9 +1,27 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, desktopCapturer, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut, desktopCapturer, screen, session } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
 import dotenv from 'dotenv';
 
-dotenv.config();
+const loadEnv = () => {
+  const envPaths = [
+    path.join(process.cwd(), '.env'),
+    path.join(path.dirname(process.execPath), '.env'),
+    path.join(process.resourcesPath || '', '.env'),
+  ];
+
+  for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath });
+      return;
+    }
+  }
+
+  dotenv.config();
+};
+
+loadEnv();
 
 if (started) {
   app.quit();
