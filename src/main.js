@@ -112,6 +112,15 @@ ipcMain.on('close-window', () => {
 });
 
 app.whenReady().then(() => {
+  // CRITICAL FIX: Handle getDisplayMedia permission for System Loopback Audio
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+      // Automatically pick primary screen and enable loopback audio
+      callback({ video: sources[0], audio: 'loopback' });
+    }).catch(() => {
+      callback({});
+    });
+  });
   if (process.platform === 'darwin') {
     app.dock.hide();
   }
