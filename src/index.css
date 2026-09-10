@@ -116,3 +116,8 @@
     transform: scaleY(0.6);
   }
 } */
+
+.answer-content {
+  user-select: text;
+  -webkit-user-select: text;
+}
