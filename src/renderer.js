@@ -204,7 +204,7 @@ QWEN OUTPUT RULES:
           const parsed = JSON.parse(payload);
           const token = parsed.choices[0]?.delta?.content || '';
           accumulatedText += token;
-          answerContainer.innerHTML = marked.parse(accumulatedText);
+          renderAnswer(answerContainer, accumulatedText);
         } catch (_) {}
       }
     }
@@ -230,7 +230,7 @@ QWEN OUTPUT RULES:
       model: geminiVisionModel,
       timeoutMs: 60000,
     });
-    answerContainer.innerHTML = marked.parse(geminiAnswer);
+    renderAnswer(answerContainer, geminiAnswer);
   } catch (error) {
     console.error('Gemini vision error:', error);
 
@@ -489,7 +489,7 @@ QUESTION ROUTING:
           const parsed = JSON.parse(payload);
           const token = parsed.choices[0]?.delta?.content || '';
           accumulatedText += token;
-          answerContainer.innerHTML = marked.parse(accumulatedText);
+          renderAnswer(answerContainer, accumulatedText);
         } catch (_) {}
       }
     }
