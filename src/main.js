@@ -92,6 +92,8 @@ ipcMain.handle('get-env', () => {
   return {
     DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY || '',
     GROQ_API_KEY: process.env.GROQ_API_KEY || '',
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+    GEMINI_VISION_MODEL: process.env.GEMINI_VISION_MODEL || '',
   };
 });
 
