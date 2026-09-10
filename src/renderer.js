@@ -1,5 +1,6 @@
 import './index.css';
 import { marked } from 'marked';
+import { getGeminiVisionAnswer } from './geminiVisionFallback';
 
 marked.setOptions({
   gfm: true,
@@ -77,32 +78,26 @@ window.electronAPI.onTriggerScreenCapture(handleScreenAnalysis);
 async function handleScreenAnalysis() {
   const env = await window.electronAPI.getEnv();
   const groqKey = env.GROQ_API_KEY;
+  const geminiKey = env.GEMINI_API_KEY;
+  const geminiVisionModel = env.GEMINI_VISION_MODEL || undefined;
 
-  if (!groqKey) {
-    alert('Missing GROQ_API_KEY in .env file');
+  if (!geminiKey && !groqKey) {
+    alert('Missing GEMINI_API_KEY or GROQ_API_KEY in .env file');
     return;
   }
 
   const card = document.createElement('div');
   card.className = 'p-3 bg-white/5 rounded-lg border border-indigo-700/50 space-y-2 animate-fade-in';
   card.innerHTML = `
-    <div class="text-[11px] font-semibold text-indigo-400">📷 Analyzing Screen Question...</div>
-    <div class="answer-content markdown-body text-gray-200 text-xs">⚡ Scanning screen...</div>
+    <div class="model-source text-[11px] font-semibold text-indigo-400">📷 Snap Answer: Gemini</div>
+    <div class="answer-content markdown-body text-gray-200 text-xs select-text">⚡ Scanning screen...</div>
   `;
   responseFeed.prepend(card);
 
+  const sourceLabel = card.querySelector('.model-source');
   const answerContainer = card.querySelector('.answer-content');
-
-  try {
-    const base64Image = await window.electronAPI.captureScreen();
-    if (!base64Image) {
-      answerContainer.textContent = 'Failed to capture screen.';
-      return;
-    }
-
-    answerContainer.textContent = '⚡ Extracting and solving question...';
-
-    const systemPrompt = `You are a live assessment solver.
+  let base64Image = '';
+  const geminiSystemPrompt = `You are a live assessment solver.
 CRITICAL FORMAT RULES:
 1. First identify what the question is asking: code, multiple-choice, debugging, explanation, output prediction, or another task.
 2. If it is a coding question, give **Code** first with a complete runnable solution.
@@ -111,7 +106,29 @@ CRITICAL FORMAT RULES:
 5. If it asks for explanation, output, complexity, or any other answer, give the direct answer first.
 6. After the answer/code/fix, give **Explanation** with exactly 4 short bullet points.
 7. Use simple, easy English. Keep it direct, practical, and beginner-friendly.
-8. No greetings, no long theory, no dry-run table, no extra sections.`;
+8. Keep the answer complete and concise. Do not exceed 600 tokens.
+9. Do not reveal internal analysis, such as "I am analyzing", "this looks good", or what you are checking.
+10. No greetings, no long theory, no dry-run table, no extra sections.`;
+
+  const qwenSystemPrompt = `You are a screenshot coding-answer solver.
+Return only the final answer the user should submit.
+
+QWEN OUTPUT RULES:
+1. If code is needed, start immediately with one complete runnable code block in the correct language.
+2. If it is multiple-choice, start immediately with the option and answer.
+3. If it asks for output, explanation, complexity, or a direct text answer, start immediately with that answer.
+4. Do not write problem analysis, algorithm notes, implementation details, or phrases like "The user wants me to".
+5. After the answer/code/fix, write **Explanation** with exactly 4 short bullet points.
+6. Keep it concise, but never leave code incomplete.
+7. No greetings, no restating the screenshot, no dry-run table, no extra sections.`;
+
+  const runQwenFallback = async () => {
+    if (!groqKey) {
+      throw new Error('Missing GROQ_API_KEY in .env file');
+    }
+
+    sourceLabel.textContent = '📷 Snap Answer: Qwen fallback';
+    answerContainer.textContent = 'Gemini failed. Trying Qwen fallback...';
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -123,13 +140,13 @@ CRITICAL FORMAT RULES:
         model: 'qwen/qwen3.6-27b',
         stream: true,
         temperature: 0.1,
-        max_completion_tokens: 1200,
+        max_completion_tokens: 800,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: qwenSystemPrompt },
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Read the question in this screenshot. Answer exactly what it asks. If code or a fix is needed, give it first. Then add only 4 short and simple explanation bullet points.' },
+              { type: 'text', text: 'Read the screenshot and answer directly. If code is needed, return complete code first, then exactly 4 short explanation bullets.' },
               {
                 type: 'image_url',
                 image_url: {
@@ -144,13 +161,7 @@ CRITICAL FORMAT RULES:
 
     if (!response.ok) {
       const errText = await response.text();
-      const retryAfter = response.headers.get('retry-after');
-      const waitText = retryAfter ? ` Wait ${retryAfter}s and try again.` : ' Wait a minute and try again.';
-      const isRateLimit = response.status === 429 || errText.toLowerCase().includes('rate limit');
-      answerContainer.textContent = isRateLimit
-        ? `Vision API rate limit hit.${waitText}`
-        : `Vision API Error: ${errText}`;
-      return;
+      throw new Error(`Qwen API Error (${response.status}): ${errText}`);
     }
 
     const reader = response.body.getReader();
@@ -167,7 +178,12 @@ CRITICAL FORMAT RULES:
 
       for (const line of lines) {
         const payload = line.replace(/^data: /, '').trim();
-        if (payload === '[DONE]') return;
+        if (payload === '[DONE]') {
+          if (!accumulatedText.trim()) {
+            throw new Error('Qwen returned an empty answer.');
+          }
+          return;
+        }
 
         try {
           const parsed = JSON.parse(payload);
@@ -177,9 +193,38 @@ CRITICAL FORMAT RULES:
         } catch (_) {}
       }
     }
+
+    if (!accumulatedText.trim()) {
+      throw new Error('Qwen returned an empty answer.');
+    }
+  };
+
+  try {
+    base64Image = await window.electronAPI.captureScreen();
+    if (!base64Image) {
+      answerContainer.textContent = 'Failed to capture screen.';
+      return;
+    }
+
+    answerContainer.textContent = '⚡ Extracting and solving question...';
+
+    const geminiAnswer = await getGeminiVisionAnswer({
+      apiKey: geminiKey,
+      base64Image,
+      systemPrompt: geminiSystemPrompt,
+      model: geminiVisionModel,
+      timeoutMs: 60000,
+    });
+    answerContainer.innerHTML = marked.parse(geminiAnswer);
   } catch (error) {
-    console.error('Vision streaming error:', error);
-    answerContainer.textContent = 'Error processing screen question.';
+    console.error('Gemini vision error:', error);
+
+    try {
+      await runQwenFallback();
+    } catch (fallbackError) {
+      console.error('Qwen vision fallback error:', fallbackError);
+      answerContainer.textContent = `Gemini failed: ${error.message}\nQwen fallback also failed: ${fallbackError.message}`;
+    }
   }
 }
 
