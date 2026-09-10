@@ -90,7 +90,7 @@ async function handleScreenAnalysis() {
   card.className = 'p-3 bg-white/5 rounded-lg border border-indigo-700/50 space-y-2 animate-fade-in';
   card.innerHTML = `
     <div class="model-source text-[11px] font-semibold text-indigo-400">📷 Snap Answer: Gemini</div>
-    <div class="answer-content markdown-body text-gray-200 text-xs select-text">⚡ Scanning screen...</div>
+    <div class="answer-content markdown-body text-gray-200 text-xs">⚡ Scanning screen...</div>
   `;
   responseFeed.prepend(card);
 

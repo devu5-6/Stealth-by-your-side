@@ -118,6 +118,6 @@
 } */
 
 .answer-content {
-  user-select: text;
-  -webkit-user-select: text;
+  user-select: none;
+  -webkit-user-select: none;
 }
