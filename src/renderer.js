@@ -1,11 +1,26 @@
 import './index.css';
+import 'katex/dist/katex.min.css';
 import { marked } from 'marked';
+import renderMathInElement from 'katex/contrib/auto-render';
 import { getGeminiVisionAnswer } from './geminiVisionFallback';
 
 marked.setOptions({
   gfm: true,
   breaks: true,
 });
+
+function renderAnswer(container, markdownText) {
+  container.innerHTML = marked.parse(markdownText);
+  renderMathInElement(container, {
+    delimiters: [
+      { left: '$$', right: '$$', display: true },
+      { left: '$', right: '$', display: false },
+      { left: '\\(', right: '\\)', display: false },
+      { left: '\\[', right: '\\]', display: true },
+    ],
+    throwOnError: false,
+  });
+}
 
 // DOM Elements
 const snapBtn = document.getElementById('snapBtn');
