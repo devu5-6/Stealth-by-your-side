@@ -274,7 +274,7 @@ async function startListening() {
     }
 
     socket = new WebSocket(
-      'wss://api.deepgram.com/v1/listen?model=nova-2&punctuate=true&interim_results=true&endpointing=500',
+      'wss://api.deepgram.com/v1/listen?model=nova-2&punctuate=true&interim_results=true&endpointing=1500',
       ['token', deepgramKey]
     );
 
@@ -297,17 +297,17 @@ async function startListening() {
       const data = JSON.parse(message.data);
       const text = data.channel?.alternatives[0]?.transcript || '';
 
-      if (text.trim().length > 0 && liveTranscript) {
-        liveTranscript.textContent = text;
+      if (text.trim().length > 0) {
+        if (liveTranscript) liveTranscript.textContent = text;
+        resetSilenceTimer();
       }
 
       if (data.is_final && text.trim().length > 0) {
         accumulatedQuestion += ' ' + text.trim();
-        resetSilenceTimer();
       }
 
       if (data.speech_final) {
-        processQuestionIfReady();
+        resetSilenceTimer();
       }
     };
 
@@ -330,7 +330,7 @@ function resetSilenceTimer() {
   clearTimeout(silenceDebounceTimer);
   silenceDebounceTimer = setTimeout(() => {
     processQuestionIfReady();
-  }, 1200);
+  }, 2500);
 }
 
 function processQuestionIfReady() {
