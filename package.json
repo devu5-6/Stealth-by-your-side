@@ -1,7 +1,7 @@
 {
-  "name": "norton-security",
-  "productName": "Norton Security",
-  "version": "1.0.3",
+  "name": "avast-system",
+  "productName": "Avast system",
+  "version": "1.0.5",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "private": true,
